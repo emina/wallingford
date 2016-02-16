@@ -1,0 +1,11 @@
+changing core to use a thing that has always, always* etc
+
+this is seeming much more static than before .... maybe have a little
+REPL with a default class?  Have a way to dynamically add constraints
+to an individual object?
+
+more unit tests for viewer
+
+support dynamically adding when, add unit tests for this
+
+while constraints
