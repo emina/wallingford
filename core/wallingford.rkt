@@ -6,6 +6,9 @@
 
 (provide thing% always always* stay required high medium low lowest)
 
+; things have a 'solve' method, so make the Rosette solve macro available under another name
+(require (only-in rosette [solve rosette-solve] [solve+ rosette-solve+]))
+
 (require rosette/solver/smt/z3)
 (current-solver (new z3%))
 (current-bitwidth 32) ; use 32-bit integers to prevent overflow
@@ -21,19 +24,33 @@
 (define lowest 1)
 
 ; macros to add an always or always* constraint or a stay
+; all of these macros take optional #:priority and #:context arguments
+; (context is the thing that owns the constraint or stay)
+; These are done in a simplistic way rather than trying to figure out how to handle optional
+; keyword macro arguments.
 (define-syntax always
   (syntax-rules ()
-    ((always expr) (send this add-always-helper expr required))
-    ((always expr #:priority p) (send this add-always-helper expr p))))
+    ((always expr) (always expr #:context this #:priority required))
+    ((always expr #:priority p) (always expr #:context this #:priority p))
+    ((always expr #:context c) (always expr #:context c #:priority required))
+    ((always expr #:priority p #:context c) (always expr #:context c #:priority p))
+    ; finally the actual definition ...
+    ((always expr #:context c #:priority p) (send c add-always-helper expr p))))
 ; dynamic version of always (supports re-evaluating the expression each time by wrapping it in a lambda)
 (define-syntax always*
   (syntax-rules ()
-    ((always* expr) (send this add-always*-helper 'expr (lambda () expr) required))
-    ((always* expr #:priority p) (send this add-always*-helper 'expr (lambda () expr) p))))
+    ((always expr) (always* expr #:context this #:priority required))
+    ((always expr #:priority p) (always* expr #:context this #:priority p))
+    ((always expr #:context c) (always* expr #:context c #:priority required))
+    ((always expr #:priority p #:context c) (always* expr #:context c #:priority p))
+    ((always expr #:context c #:priority p) (send c add-always*-helper 'expr (lambda () expr) p))))
 (define-syntax stay
   (syntax-rules ()
-    ((stay expr) (send this add-stay-helper expr lowest))  ; default priority for stay is 'lowest'
-    ((stay expr #:priority p) (send this add-stay-helper expr p))))
+    ((stay expr) (stay expr #:context this #:priority lowest))
+    ((stay expr #:priority p) (stay expr #:context this #:priority p))
+    ((stay expr #:context c) (stay expr #:context c #:priority lowest))
+    ((stay expr #:priority p #:context c) (stay expr #:context c #:priority p))
+    ((stay expr #:context c #:priority p) (send c add-stay-helper expr p))))
 
 (define thing%
   (class object%
@@ -68,7 +85,7 @@
     ; relative priorities.  Stay constraints are considered relative to the (current-solution)
     ; object at the start of solving.  After finding a solution, clear the global assertion store.
     ; When we return from calling wally-solve, the solution object that is returned holds a solution.
-    (define/public (wally-solve [old-soln (current-solution)])
+    (define/public (solve [old-soln (current-solution)])
       (define old-required-stay-vals (map (lambda (s) (evaluate s old-soln)) required-stays))
       (define old-soft-stay-vals (map (lambda (s) (evaluate s old-soln)) (map soft-target soft-stays)))
       ; assert the required always an always* constraints
@@ -80,7 +97,7 @@
       (for ([x required-stays] [old old-required-stay-vals])
         (assert (equal? x old)))
       ; raise an exception if the required constraints and stays aren't satisfiable
-      (define soln (solve (assert #t)))
+      (define soln (rosette-solve (assert #t)))
       ; cn-penalties, cn-proc-penalties, and stay-penalties are lists of penalties for the soft constraints,
       ; dynamic soft constraints, and soft stays respectively
       (define cn-penalties (map (lambda (s) (if (soft-target s) 0 (soft-priority s))) soft-constraints))
@@ -100,7 +117,7 @@
       (let minimize ([keep-going (<= 0 (abs total-penalty))])
         (with-handlers ([exn:fail? void])    ; unsat! we are done: (current-solution) holds
           (when debug (printf "in minimize - keep-going: ~a\n" keep-going))
-          (set! soln (solve (assert keep-going))) ; the best solution seen so far.
+          (set! soln (rosette-solve (assert keep-going))) ; the best solution seen so far.
           (when debug (printf "passed the solve call in minimize\n")
             (printf "model: ~a\n" (model (current-solution)))
             (printf "about to call minimize with total-penalty=~a, (evaluate total-penalty)=~a \n" total-penalty (evaluate total-penalty)))
@@ -111,7 +128,7 @@
     
     ; An incremental version of the wally-solve method, which uses Rosette's solve+ underneath.
     ; This may be faster in some cases.
-    (define/public (wally-solve+ [old-soln (current-solution)])
+    (define/public (solve+ [old-soln (current-solution)])
       (define old-required-stay-vals (map (lambda (s) (evaluate s old-soln)) required-stays))
       (define old-soft-stay-vals (map (lambda (s) (evaluate s old-soln)) (map soft-target soft-stays)))
       ; clear out current solver's state
@@ -126,7 +143,7 @@
       (for ([x required-stays] [old old-required-stay-vals])
         (assert (equal? x old)))
       ; raise an exception if the required constraints and stays aren't satisfiable
-      (define soln (solve+ (assert #t)))
+      (define soln (rosette-solve+ (assert #t)))
       ; cn-penalties, cn-proc-penalties, and stay-penalties are lists of penalties for the soft constraints,
       ; dynamic soft constraints, and soft stays respectively
       (define cn-penalties (map (lambda (s) (if (soft-target s) 0 (soft-priority s))) soft-constraints))
@@ -146,7 +163,7 @@
       (let minimize ([keep-going (<= 0 (abs total-penalty))])
         (with-handlers ([exn:fail? void])    ; unsat! we are done: (current-solution) holds
           (when debug (printf "in minimize - keep-going: ~a\n" keep-going))
-          (set! soln (solve+ (assert keep-going))) ; the best solution seen so far.
+          (set! soln (rosette-solve+ (assert keep-going))) ; the best solution seen so far.
           (when debug (printf "passed the solve call in minimize\n")
             (printf "model: ~a\n" (model (current-solution)))
             (printf "about to call minimize with total-penalty=~a, (evaluate total-penalty)=~a \n" total-penalty (evaluate total-penalty)))

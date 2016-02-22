@@ -144,6 +144,23 @@
    ; clear assertions, since they are in an unsatisfiable state at this point
    (clear-asserts)))
 
+(define (always-with-class-test)
+  (test-case
+   "test always in a class (so context is implicit)"
+   (define testclass%
+     (class thing%
+       (super-new)
+       (define-symbolic x number?)
+       ; have one constraint with an explicit priority, one with a default (which should be required)
+       (always (equal? x 2) #:priority low)
+       (always (equal? x 3))
+       (define/public (test1)
+         (send this wally-solve)
+         (equal? (evaluate x) 3))))
+   (define thing (new testclass%))
+   (check-true (send thing test1))))
+
+
 (define wallingford-core-tests 
   (test-suite 
    "run general tests for wallingford"
@@ -155,4 +172,5 @@
    (required-stay-test)
    (unsatisfiable-required-cn-test)
    (explicit-required-priority-test)
+   (always-with-class-test)
    ))
