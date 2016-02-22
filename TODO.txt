@@ -1,8 +1,13 @@
 changing core to use a thing that has always, always* etc
 
-this is seeming much more static than before .... maybe have a little
-REPL with a default class?  Have a way to dynamically add constraints
-to an individual object?
+this is seeming much more static than before .... is there a way to
+have a (current-thing) function?
+
+tests partially converted.  Finish these, also move reactive tests to tests/
+dynamic electrical things not yet working
+
+
+convert applications
 
 more unit tests for viewer
 

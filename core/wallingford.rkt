@@ -39,11 +39,11 @@
 ; dynamic version of always (supports re-evaluating the expression each time by wrapping it in a lambda)
 (define-syntax always*
   (syntax-rules ()
-    ((always expr) (always* expr #:context this #:priority required))
-    ((always expr #:priority p) (always* expr #:context this #:priority p))
-    ((always expr #:context c) (always* expr #:context c #:priority required))
-    ((always expr #:priority p #:context c) (always* expr #:context c #:priority p))
-    ((always expr #:context c #:priority p) (send c add-always*-helper 'expr (lambda () expr) p))))
+    ((always* expr) (always* expr #:context this #:priority required))
+    ((always* expr #:priority p) (always* expr #:context this #:priority p))
+    ((always* expr #:context c) (always* expr #:context c #:priority required))
+    ((always* expr #:priority p #:context c) (always* expr #:context c #:priority p))
+    ((always* expr #:context c #:priority p) (send c add-always*-helper 'expr (lambda () expr) p))))
 (define-syntax stay
   (syntax-rules ()
     ((stay expr) (stay expr #:context this #:priority lowest))

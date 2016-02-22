@@ -3,12 +3,12 @@
 
 (require rackunit rackunit/text-ui)
 
-(require "wallingford-core-tests.rkt")
+(require "electrical-things-dynamic-tests.rkt")
 
 (define all-tests
   (test-suite
    "run all tests"
-   wallingford-core-tests))
+   electrical-things-dynamic-tests))
 
 (printf "running all-tests\n")
 (time (run-tests all-tests))
